@@ -4,7 +4,7 @@
   "description": "Secure self-hosted image & PDF hosting server with REST API (imgbb/uploadcare style)",
   "type": "module",
   "private": true,
-  "main": "src/server.js",
+  "main": "server.cjs",
   "engines": {
     "node": ">=20"
   },
@@ -12,7 +12,7 @@
     "setup": "node scripts/setup.js",
     "db:setup": "node scripts/db-setup.js",
     "db:schema": "node scripts/db-setup.js --print-sql",
-    "start": "node src/server.js",
+    "start": "node server.cjs",
     "dev": "node --watch src/server.js",
     "create-admin": "node scripts/create-admin.js",
     "create-key": "node scripts/create-key.js",

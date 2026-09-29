@@ -112,6 +112,61 @@ npm test                                        # ১১৫টি টেস্�
 
 `create-admin` কোনো পাসওয়ার্ড বানায় না। নতুন অ্যাডমিনের ইমেইলে একটা আমন্ত্রণ লিংক যায়, যেখান থেকে তিনি নিজের পাসওয়ার্ড সেট করেন, আর তাতে তার ইমেইলও যাচাই হয়ে যায়। SMTP সেট করা না থাকলে (`MAIL_TRANSPORT=log`) বা ইমেইল পাঠানো না গেলে লিংকটি টার্মিনালেই দেখানো হয়, তাই প্রথম অ্যাডমিন সবসময় ঢুকতে পারবেন। আগে থেকে থাকা কোনো ইউজারকে অ্যাডমিন বানাতে: `npm run create-admin -- --email user@example.com --promote`। পরের অ্যাডমিন বা ইউজারদের প্যানেলের **ইউজার → + আমন্ত্রণ** থেকে যোগ করা যায়।
 
+## Hostinger এ ডেপ্লয় (Business / Cloud হোস্টিং)
+
+Single ও Premium প্ল্যানে Node.js চলে না; লাগবে **Business Web Hosting** বা যেকোনো **Cloud** প্ল্যান।
+
+**১. ডাটাবেস:** hPanel → **Databases → Management** থেকে একটি MySQL ডাটাবেস ও user তৈরি করুন (নাম হবে `u123456789_media` এর মতো)।
+
+**২. ইমেইল অ্যাকাউন্ট:** hPanel → **Emails** থেকে `no-reply@আপনার-ডোমেইন` তৈরি করুন (SMTP এর জন্য)।
+
+**৩. অ্যাপ:** **Websites → Add Website → Deploy Web App** → GitHub রিপো অথবা zip আপলোড। zip এ `node_modules`, `.env`, `storage` রাখবেন না।
+
+| সেটিং | কী দেবেন |
+|---|---|
+| Framework preset | **Express.js** (না থাকলে **Other**) |
+| Node.js version | **22.x** |
+| Package manager | **npm** |
+| Build command | খালি রাখুন (build ধাপ নেই) |
+| Output directory | খালি রাখুন |
+| Entry file | **`server.cjs`** |
+
+**৪. Environment variables** (ডেপ্লয় পেজে; `PORT` আর `HOST` দেবেন না, Hostinger নিজে দেয়):
+
+```ini
+NODE_ENV=production
+PUBLIC_BASE_URL=https://আপনার-ডোমেইন.com
+TRUST_PROXY=1
+ADMIN_TOKEN=লোকাল .env থেকে কপি
+SIGNING_SECRET=লোকাল .env থেকে কপি
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=u123456789_media
+DB_USER=u123456789_media
+DB_PASSWORD=ডাটাবেসের পাসওয়ার্ড
+STORAGE_DRIVER=mysql
+MAIL_TRANSPORT=smtp
+SMTP_HOST=smtp.hostinger.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=no-reply@আপনার-ডোমেইন.com
+SMTP_PASSWORD=ইমেইল অ্যাকাউন্টের পাসওয়ার্ড
+MAIL_FROM=Media Server <no-reply@আপনার-ডোমেইন.com>
+```
+
+`TRUST_PROXY=1` অবশ্যই দিন। না দিলে সব ভিজিটরকে একই IP মনে হবে, আর একজনের rate limit এ সবাই আটকে যাবে। টেবিলগুলো প্রথমবার চালুর সময় নিজে থেকে তৈরি হয়।
+
+**৫. প্রথম অ্যাডমিন:** Hostinger এ টার্মিনাল থেকে npm কমান্ড চালানো যায় না, তাই সাইটে সাধারণভাবে রেজিস্ট্রেশন করে ইমেইল যাচাই করুন। তারপর hPanel → **Databases → phpMyAdmin** এ চালান:
+
+```sql
+UPDATE users SET role = 'admin', email_verified_at = COALESCE(email_verified_at, NOW(3))
+WHERE email = 'you@আপনার-ডোমেইন.com';
+```
+
+পেজ রিফ্রেশ করলেই বাঁদিকের মেনুতে অ্যাডমিন প্যানেল আসবে।
+
+**৬. স্টোরেজ:** Hostinger প্রতিবার ডেপ্লয়ে অ্যাপের ফোল্ডার নতুন করে লেখে, তাই `STORAGE_DRIVER=mysql` (ডিফল্ট) নিরাপদ। অনেক ফাইল হলে ডাটাবেসের সাইজ সীমা দেখে নিন। বিকল্প হলো `STORAGE_DRIVER=disk` আর `STORAGE_DIR=/home/u123456789/media-storage`, অর্থাৎ ডেপ্লয় ফোল্ডারের **বাইরে** একটা পাথ, যাতে ডেপ্লয়ে ফাইল মুছে না যায়।
+
 ## ইমেইল সেটআপ (SMTP)
 
 ইমেইল যাচাই, পাসওয়ার্ড রিসেট, আমন্ত্রণ আর নোটিফিকেশনের জন্য `.env` এ SMTP দিন:

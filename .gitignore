@@ -2,3 +2,7 @@ node_modules/
 .env
 storage/
 *.log
+
+# Environment files with real values (only the example is committed)
+.env.*
+!.env.example
