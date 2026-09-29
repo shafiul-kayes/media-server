@@ -140,7 +140,11 @@ export function validateConfig() {
     throw new Error(`Invalid configuration (run "npm run setup" to generate .env):\n - ${problems.join('\n - ')}`);
   }
   if (config.env === 'production' && !config.baseUrl.startsWith('https://')) {
-    console.warn('[warn] PUBLIC_BASE_URL should use https:// in production');
+    console.warn(`[warn] PUBLIC_BASE_URL is "${config.baseUrl}". Set it to your https:// domain: links in emails and API `
+      + 'responses use it, and cookies are only marked Secure when it is https.');
+  }
+  if (!process.env.PUBLIC_BASE_URL) {
+    console.warn('[warn] PUBLIC_BASE_URL is not set; using http://localhost. Set it to the public address of this site.');
   }
   if (config.env === 'production' && config.mail.transport !== 'smtp') {
     console.warn('[warn] MAIL_TRANSPORT is not "smtp": verification and password-reset emails are only printed to the console');

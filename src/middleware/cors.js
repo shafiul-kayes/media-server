@@ -1,6 +1,7 @@
 import { config } from '../config.js';
 import { HttpError } from '../errors.js';
 import { originMatches, splitOrigins } from '../services/origins.js';
+import { isOwnOrigin } from '../services/ownOrigin.js';
 
 /**
  * CORS for the key-authenticated API.
@@ -27,10 +28,6 @@ export function apiCors(req, res, next) {
   next();
 }
 
-function ownOrigins(req) {
-  return [new URL(config.baseUrl).origin, `${req.protocol}://${req.get('host')}`];
-}
-
 /**
  * Browser requests (those with an Origin header) are only allowed from the key's `allowed_origins`,
  * the global CORS_ORIGINS list, or this server itself (the /docs page). Server-to-server calls
@@ -38,7 +35,7 @@ function ownOrigins(req) {
  */
 export function enforceOrigin(req, res, next) {
   const origin = req.get('origin');
-  if (!origin || ownOrigins(req).includes(origin)) return next();
+  if (!origin || isOwnOrigin(req, origin)) return next();
   const patterns = [...config.corsOrigins, ...splitOrigins(req.apiKey.allowed_origins)];
   if (patterns.some((p) => originMatches(p, origin))) return next();
   next(new HttpError(403, 'origin_not_allowed', `Origin ${origin} is not in this API key's allowed_origins`));

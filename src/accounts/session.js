@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { config } from '../config.js';
 import { HttpError } from '../errors.js';
+import { isOwnOrigin } from '../services/ownOrigin.js';
 import { sessions } from './repo.js';
 
 /**
@@ -127,21 +128,11 @@ export function csrfToken(req, res) {
   return token;
 }
 
-function ownOrigins(req) {
-  return [new URL(config.baseUrl).origin, `${req.protocol}://${req.get('host')}`];
-}
-
 function isSameOrigin(req) {
   const origin = req.get('origin');
-  if (origin) return ownOrigins(req).includes(origin);
+  if (origin) return isOwnOrigin(req, origin);
   const referer = req.get('referer');
-  if (referer) {
-    try {
-      return ownOrigins(req).includes(new URL(referer).origin);
-    } catch {
-      return false;
-    }
-  }
+  if (referer) return isOwnOrigin(req, referer);
   return true; // some privacy tools strip both headers; the token check below still applies
 }
 

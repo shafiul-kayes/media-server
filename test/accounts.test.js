@@ -193,6 +193,19 @@ describe('login security', () => {
     assert.equal(crossSite.status, 403);
   });
 
+  test('accepts its own host when TLS ends at a proxy/CDN, still rejects other hosts', async () => {
+    // Production case: the browser sends Origin https://site while the app sees plain http.
+    const b = new Browser();
+    await b.get('/login');
+    const ok = await b.post('/login', { email: 'alice@example.com', password: 'correct horse battery' }, { origin: base.replace('http://', 'https://') });
+    assert.equal(ok.status, 303);
+    const evil = new Browser();
+    await evil.get('/login');
+    const host = new URL(base).host;
+    const res = await evil.post('/login', { email: 'alice@example.com', password: 'correct horse battery' }, { origin: `https://${host}.evil.example` });
+    assert.equal(res.status, 403);
+  });
+
   test('does not allow open redirects after login', async () => {
     const b = new Browser();
     await b.get('/login');
