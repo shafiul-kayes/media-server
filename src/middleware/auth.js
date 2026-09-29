@@ -28,7 +28,7 @@ export function readKey(req, { query = false, body = false } = {}) {
 export async function authenticate(raw) {
   if (!raw || !KEY_RE.test(raw)) throw unauthorized();
   const key = await repo.keys.findByHash(hashKey(raw));
-  if (!key || !key.active) throw unauthorized();
+  if (!key || !key.active || key.owner_status === 'suspended') throw unauthorized();
 
   const now = Date.now();
   if (!key.last_used_at || now - key.last_used_at > 60_000) await repo.keys.touch(key.id, now);

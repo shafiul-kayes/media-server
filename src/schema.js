@@ -71,6 +71,112 @@ export const migrations = [
       ) ${TABLE}`,
     ],
   },
+  {
+    version: 2,
+    name: 'user accounts and api applications',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS users (
+        id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        name                VARCHAR(100) NOT NULL,
+        email               VARCHAR(254) NOT NULL,
+        password_hash       VARCHAR(255) ${ID} NOT NULL COMMENT 'scrypt$N$r$p$salt$hash',
+        role                ENUM('user', 'admin') NOT NULL DEFAULT 'user',
+        status              ENUM('active', 'suspended') NOT NULL DEFAULT 'active',
+        failed_logins       INT UNSIGNED NOT NULL DEFAULT 0,
+        locked_until        DATETIME(3) NULL,
+        created_at          DATETIME(3) NOT NULL,
+        last_login_at       DATETIME(3) NULL,
+        password_changed_at DATETIME(3) NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_users_email (email)
+      ) ${TABLE}`,
+
+      `CREATE TABLE IF NOT EXISTS sessions (
+        id           CHAR(64) ${ID} NOT NULL COMMENT 'SHA-256 of the cookie token; the token itself is never stored',
+        user_id      INT UNSIGNED NOT NULL,
+        csrf_token   CHAR(43) ${ID} NOT NULL,
+        ip           VARCHAR(45) CHARACTER SET ascii NULL,
+        user_agent   VARCHAR(255) NULL,
+        created_at   DATETIME(3) NOT NULL,
+        last_seen_at DATETIME(3) NOT NULL,
+        expires_at   DATETIME(3) NOT NULL,
+        PRIMARY KEY (id),
+        KEY idx_sessions_user (user_id),
+        KEY idx_sessions_expires (expires_at),
+        CONSTRAINT fk_sessions_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      ) ${TABLE}`,
+
+      `ALTER TABLE api_keys
+        ADD COLUMN user_id INT UNSIGNED NULL AFTER id,
+        ADD COLUMN key_issued_at DATETIME(3) NULL COMMENT 'NULL until the owner generates the key',
+        ADD KEY idx_api_keys_user (user_id),
+        ADD CONSTRAINT fk_api_keys_user FOREIGN KEY (user_id) REFERENCES users (id)`,
+
+      'UPDATE api_keys SET key_issued_at = created_at WHERE key_issued_at IS NULL',
+
+      `CREATE TABLE IF NOT EXISTS api_applications (
+        id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        user_id           INT UNSIGNED NOT NULL,
+        name              VARCHAR(100) NOT NULL,
+        website           VARCHAR(255) NULL,
+        purpose           TEXT NOT NULL,
+        expected_volume   VARCHAR(32) CHARACTER SET ascii NOT NULL,
+        requested_scopes  VARCHAR(64) CHARACTER SET ascii NOT NULL,
+        requested_origins TEXT CHARACTER SET ascii NOT NULL,
+        status            ENUM('pending', 'approved', 'rejected', 'revoked') NOT NULL DEFAULT 'pending',
+        admin_note        VARCHAR(1000) NULL,
+        reviewed_by       INT UNSIGNED NULL,
+        reviewed_at       DATETIME(3) NULL,
+        api_key_id        VARCHAR(32) ${ID} NULL,
+        created_at        DATETIME(3) NOT NULL,
+        updated_at        DATETIME(3) NOT NULL,
+        PRIMARY KEY (id),
+        KEY idx_apps_user (user_id, created_at),
+        KEY idx_apps_status (status, created_at),
+        UNIQUE KEY uq_apps_api_key (api_key_id),
+        CONSTRAINT fk_apps_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        CONSTRAINT fk_apps_reviewer FOREIGN KEY (reviewed_by) REFERENCES users (id) ON DELETE SET NULL,
+        CONSTRAINT fk_apps_api_key FOREIGN KEY (api_key_id) REFERENCES api_keys (id) ON DELETE SET NULL
+      ) ${TABLE}`,
+
+      `CREATE TABLE IF NOT EXISTS audit_logs (
+        id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        actor_id   INT UNSIGNED NULL,
+        action     VARCHAR(64) CHARACTER SET ascii NOT NULL,
+        target     VARCHAR(64) NULL,
+        details    VARCHAR(1000) NULL,
+        ip         VARCHAR(45) CHARACTER SET ascii NULL,
+        created_at DATETIME(3) NOT NULL,
+        PRIMARY KEY (id),
+        KEY idx_audit_created (created_at),
+        KEY idx_audit_actor (actor_id, created_at),
+        CONSTRAINT fk_audit_actor FOREIGN KEY (actor_id) REFERENCES users (id) ON DELETE SET NULL
+      ) ${TABLE}`,
+    ],
+  },
+  {
+    version: 3,
+    name: 'email verification and password reset',
+    statements: [
+      'ALTER TABLE users ADD COLUMN email_verified_at DATETIME(3) NULL AFTER email',
+      // Accounts created before verification existed are treated as verified so nobody is locked out.
+      'UPDATE users SET email_verified_at = created_at WHERE email_verified_at IS NULL',
+
+      `CREATE TABLE IF NOT EXISTS user_tokens (
+        id         CHAR(64) ${ID} NOT NULL COMMENT 'SHA-256 of the emailed token; the token itself is never stored',
+        user_id    INT UNSIGNED NOT NULL,
+        purpose    ENUM('verify_email', 'reset_password', 'invite') NOT NULL,
+        created_at DATETIME(3) NOT NULL,
+        expires_at DATETIME(3) NOT NULL,
+        used_at    DATETIME(3) NULL,
+        ip         VARCHAR(45) CHARACTER SET ascii NULL,
+        PRIMARY KEY (id),
+        KEY idx_user_tokens_user (user_id, purpose, created_at),
+        KEY idx_user_tokens_expires (expires_at),
+        CONSTRAINT fk_user_tokens_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      ) ${TABLE}`,
+    ],
+  },
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS schema_migrations (

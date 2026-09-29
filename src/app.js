@@ -11,6 +11,7 @@ import { router as apiRouter } from './routes/api.js';
 import { router as compatRouter } from './routes/compat.js';
 import { router as pagesRouter } from './routes/pages.js';
 import { router as publicRouter } from './routes/public.js';
+import { router as webRouter } from './web/index.js';
 
 const assetsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public/assets');
 
@@ -59,11 +60,13 @@ export function createApp() {
 
   // ---- Documentation ----
   const spec = JSON.stringify(buildOpenApiSpec());
-  app.get('/', (req, res) => res.redirect('/docs'));
   app.get('/openapi.json', (req, res) => res.type('application/json').set('Access-Control-Allow-Origin', '*').send(spec));
   app.get('/docs', (req, res) => res.set('Content-Security-Policy', DOCS_CSP).type('html').send(DOCS_HTML));
   app.use('/docs/assets', express.static(swaggerUiDist.getAbsoluteFSPath(), { index: false, maxAge: '1d' }));
   app.use('/assets', express.static(assetsDir, { index: false, maxAge: '1h' }));
+
+  // ---- Web panel: landing, login/registration, /account dashboard, /admin panel ----
+  app.use(webRouter);
 
   // ---- Public delivery: files, viewer pages, delete links ----
   app.use('/f', publicRouter);

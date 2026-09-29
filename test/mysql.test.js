@@ -77,7 +77,7 @@ describe('schema', () => {
        FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()`,
     );
     const names = rows.map((r) => r.name).sort();
-    assert.deepEqual(names, ['api_keys', 'file_blobs', 'file_variants', 'files', 'schema_migrations']);
+    assert.deepEqual(names, ['api_applications', 'api_keys', 'audit_logs', 'file_blobs', 'file_variants', 'files', 'schema_migrations', 'sessions', 'user_tokens', 'users']);
     for (const r of rows) {
       assert.equal(r.engine, 'InnoDB', r.name);
       assert.match(r.collation, /^utf8mb4/, r.name);

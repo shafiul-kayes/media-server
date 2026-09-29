@@ -32,19 +32,36 @@ export function parseQuotaMb(value) {
   return n * 1024 * 1024;
 }
 
-/** Creates a key and returns the plaintext secret. It is only shown once and never stored. */
-export async function createApiKey({ name, scopes, quotaBytes, allowedOrigins = [] }) {
-  const secret = `ms_${crypto.randomBytes(32).toString('base64url')}`;
+const newSecret = () => `ms_${crypto.randomBytes(32).toString('base64url')}`;
+export const keyPrefix = (secret) => secret.slice(0, 7);
+
+/**
+ * Creates a key and returns the plaintext secret, which is never stored. With `issue: false`
+ * (keys approved for a user account) the key cannot authenticate until the owner generates a
+ * secret from their dashboard with `issueSecret`.
+ */
+export async function createApiKey({ name, scopes, quotaBytes, allowedOrigins = [], userId = null, issue = true }) {
+  const secret = newSecret();
   const id = `key_${crypto.randomBytes(8).toString('hex')}`;
+  const now = Date.now();
   await repo.keys.create({
     id,
+    userId,
     name,
     keyHash: hashKey(secret),
-    prefix: secret.slice(0, 7),
+    prefix: issue ? keyPrefix(secret) : '',
     scopes: scopes.join(','),
     quotaBytes,
     allowedOrigins: allowedOrigins.join(','),
-    createdAt: Date.now(),
+    createdAt: now,
+    keyIssuedAt: issue ? now : null,
   });
-  return { secret, key: await repo.keys.findById(id) };
+  return { secret: issue ? secret : null, key: await repo.keys.findById(id) };
+}
+
+/** Generates (or rotates) the secret of an existing key and returns it once. */
+export async function issueSecret(keyId) {
+  const secret = newSecret();
+  await repo.keys.setSecret(keyId, hashKey(secret), keyPrefix(secret));
+  return secret;
 }

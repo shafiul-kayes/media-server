@@ -83,8 +83,10 @@ export function imgbbDTO(file, { deleteToken, signedForSeconds = 0 } = {}) {
 export function keyDTO(key) {
   return {
     id: key.id,
+    user_id: key.user_id ?? null,
     name: key.name,
     prefix: key.prefix,
+    issued: Boolean(key.key_issued_at),
     scopes: key.scopes.split(','),
     allowed_origins: splitOrigins(key.allowed_origins),
     quota_bytes: key.quota_bytes,

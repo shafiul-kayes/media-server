@@ -69,6 +69,36 @@ export const config = {
     allowPrivateNetworks: false,
   },
 
+  appName: env.APP_NAME || 'Media Server',
+
+  accounts: {
+    registrationEnabled: bool(env.REGISTRATION_ENABLED, true),
+    sessionIdleHours: int(env.SESSION_IDLE_HOURS, 12),
+    sessionMaxDays: int(env.SESSION_MAX_DAYS, 7),
+    maxLoginFailures: int(env.MAX_LOGIN_FAILURES, 5),
+    lockMinutes: int(env.LOGIN_LOCK_MINUTES, 15),
+    maxAppsPerUser: int(env.MAX_APPS_PER_USER, 10),
+    maxPendingPerUser: int(env.MAX_PENDING_REQUESTS_PER_USER, 3),
+    requireEmailVerification: bool(env.REQUIRE_EMAIL_VERIFICATION, true),
+    verifyTokenHours: int(env.VERIFY_TOKEN_HOURS, 48),
+    resetTokenMinutes: int(env.RESET_TOKEN_MINUTES, 60),
+    inviteTokenDays: int(env.INVITE_TOKEN_DAYS, 7),
+    notifyAdminsOnRequest: bool(env.NOTIFY_ADMINS_ON_REQUEST, true),
+  },
+
+  mail: {
+    // smtp = send for real; log = print emails (with links) to the console, for development.
+    transport: (env.MAIL_TRANSPORT || 'log').toLowerCase(),
+    host: env.SMTP_HOST || '',
+    port: int(env.SMTP_PORT, 587),
+    secure: bool(env.SMTP_SECURE, false), // true for port 465 (implicit TLS)
+    requireTls: bool(env.SMTP_REQUIRE_TLS, true), // refuse to send over plaintext on 587/25
+    user: env.SMTP_USER || '',
+    password: env.SMTP_PASSWORD || '',
+    from: env.MAIL_FROM || '',
+    replyTo: env.MAIL_REPLY_TO || '',
+  },
+
   corsOrigins: list(env.CORS_ORIGINS),
   frameAncestors: list(env.FRAME_ANCESTORS || '*'),
 
@@ -80,6 +110,10 @@ export const config = {
     transformsPerMin: int(env.RATE_LIMIT_TRANSFORMS_PER_MIN, 60),
     adminPer15Min: int(env.RATE_LIMIT_ADMIN_PER_15MIN, 50),
     deletePagePer15Min: int(env.RATE_LIMIT_DELETE_PAGE_PER_15MIN, 60),
+    loginFailuresPer15Min: int(env.RATE_LIMIT_LOGIN_FAILURES_PER_15MIN, 10),
+    registrationsPerHour: int(env.RATE_LIMIT_REGISTRATIONS_PER_HOUR, 5),
+    panelPer15Min: int(env.RATE_LIMIT_PANEL_PER_15MIN, 600),
+    passwordResetsPer15Min: int(env.RATE_LIMIT_PASSWORD_RESETS_PER_15MIN, 5),
   },
 };
 
@@ -94,6 +128,11 @@ export function validateConfig() {
   if (!config.db.user) problems.push('DB_USER is required');
   if (!/^[A-Za-z0-9_]{1,64}$/.test(config.db.database)) problems.push('DB_NAME may only contain letters, digits and _');
   if (config.env === 'production' && !config.db.password) problems.push('DB_PASSWORD must be set in production');
+  if (!['smtp', 'log', 'memory'].includes(config.mail.transport)) problems.push('MAIL_TRANSPORT must be "smtp" or "log"');
+  if (config.mail.transport === 'smtp') {
+    if (!config.mail.host) problems.push('SMTP_HOST is required when MAIL_TRANSPORT=smtp');
+    if (!/^[^\r\n]*<?[^\s@<>]+@[^\s@<>]+>?$/.test(config.mail.from)) problems.push('MAIL_FROM must be an email address, e.g. "Media Server <no-reply@example.com>"');
+  }
   for (const fa of config.frameAncestors) {
     if (/[;\s,'"]/.test(fa)) problems.push(`Invalid FRAME_ANCESTORS entry: ${fa}`);
   }
@@ -102,5 +141,8 @@ export function validateConfig() {
   }
   if (config.env === 'production' && !config.baseUrl.startsWith('https://')) {
     console.warn('[warn] PUBLIC_BASE_URL should use https:// in production');
+  }
+  if (config.env === 'production' && config.mail.transport !== 'smtp') {
+    console.warn('[warn] MAIL_TRANSPORT is not "smtp": verification and password-reset emails are only printed to the console');
   }
 }

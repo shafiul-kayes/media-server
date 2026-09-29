@@ -27,6 +27,15 @@ try {
 
 await ensureStorage();
 
+const { verifyMailer } = await import('./mail/mailer.js');
+try {
+  const smtp = await verifyMailer();
+  console.log(smtp ? `[mail] SMTP ready (${smtp})` : '[mail] MAIL_TRANSPORT=log: emails are printed to this console, not sent');
+} catch (err) {
+  // Not fatal: the site works, but verification/reset emails will fail until SMTP is fixed.
+  console.error(`[mail] SMTP check failed: ${err.message}. Verification and password-reset emails will not be delivered.`);
+}
+
 const server = createApp().listen(config.port, config.host, () => {
   console.log(`Media server listening on http://${config.host}:${config.port} (public URL: ${config.baseUrl})`);
 });

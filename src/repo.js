@@ -12,6 +12,7 @@ function mapKey(row) {
     active: Number(row.active),
     created_at: toMs(row.created_at),
     last_used_at: toMs(row.last_used_at),
+    key_issued_at: toMs(row.key_issued_at),
   };
 }
 
@@ -35,18 +36,35 @@ const KEY_UPDATABLE = ['name', 'scopes', 'quota_bytes', 'active', 'allowed_origi
 export const keys = {
   async create(row) {
     await pool.execute(
-      `INSERT INTO api_keys (id, name, key_hash, prefix, scopes, quota_bytes, allowed_origins, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [row.id, row.name, row.keyHash, row.prefix, row.scopes, row.quotaBytes, row.allowedOrigins, toDate(row.createdAt)],
+      `INSERT INTO api_keys (id, user_id, name, key_hash, prefix, scopes, quota_bytes, allowed_origins, created_at, key_issued_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [row.id, row.userId ?? null, row.name, row.keyHash, row.prefix, row.scopes, row.quotaBytes, row.allowedOrigins,
+        toDate(row.createdAt), toDate(row.keyIssuedAt)],
     );
   },
 
-  findByHash: async (hash) => mapKey(await one('SELECT * FROM api_keys WHERE key_hash = ?', [hash])),
+  /** Includes the owning user's status so a suspended user's keys stop working immediately. */
+  findByHash: async (hash) => mapKey(await one(
+    `SELECT k.*, u.status AS owner_status FROM api_keys k LEFT JOIN users u ON u.id = k.user_id
+     WHERE k.key_hash = ? AND k.key_issued_at IS NOT NULL`,
+    [hash],
+  )),
   findById: async (id) => mapKey(await one('SELECT * FROM api_keys WHERE id = ?', [id])),
 
   async list() {
     const [rows] = await pool.execute('SELECT * FROM api_keys ORDER BY created_at DESC');
     return rows.map(mapKey);
+  },
+
+  /** Replaces the secret (issue or rotate). The previous key stops working immediately. */
+  setSecret: (id, keyHash, prefix) => pool.execute(
+    'UPDATE api_keys SET key_hash = ?, prefix = ?, key_issued_at = ? WHERE id = ?',
+    [keyHash, prefix, new Date(), id],
+  ),
+
+  async fileStats(id) {
+    const row = await one('SELECT COUNT(*) AS n, CAST(COALESCE(SUM(size), 0) AS UNSIGNED) AS bytes FROM files WHERE key_id = ?', [id]);
+    return { files: Number(row.n), bytes: Number(row.bytes) };
   },
 
   touch: (id, at = Date.now()) => pool.execute('UPDATE api_keys SET last_used_at = ? WHERE id = ?', [toDate(at), id]),
