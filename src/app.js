@@ -42,7 +42,24 @@ const DOCS_HTML = `<!doctype html>
 </body>
 </html>`;
 
-export function createApp() {
+const UNAVAILABLE_TEXT = {
+  starting: 'সার্ভার চালু হচ্ছে, কয়েক সেকেন্ড পর আবার চেষ্টা করুন। / The server is starting.',
+  config_invalid: 'সার্ভারের কনফিগারেশনে ভুল আছে। অ্যাডমিন লগ দেখুন। / Server configuration error.',
+};
+
+/** Until startup finishes, answer 503 without touching the database. */
+function readinessGate(readiness) {
+  return (req, res, next) => {
+    if (readiness.ready) return next();
+    res.set('Retry-After', '15');
+    if (req.path === '/health') return res.status(503).json({ status: 'unavailable', reason: readiness.reason });
+    res.status(503).type('text/plain; charset=utf-8').send(
+      UNAVAILABLE_TEXT[readiness.reason] ?? 'ডাটাবেসে সংযোগ হচ্ছে না, একটু পর আবার চেষ্টা করুন। / Database unavailable, retrying.',
+    );
+  };
+}
+
+export function createApp({ readiness } = {}) {
   const app = express();
 
   app.disable('x-powered-by');
@@ -56,6 +73,7 @@ export function createApp() {
     hsts: config.baseUrl.startsWith('https://'),
   }));
 
+  if (readiness) app.use(readinessGate(readiness));
   app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
   // ---- Documentation ----

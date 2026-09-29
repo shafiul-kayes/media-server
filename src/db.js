@@ -2,10 +2,28 @@ import fs from 'node:fs';
 import mysql from 'mysql2/promise';
 import { config } from './config.js';
 
+/**
+ * DB_SSL_CA may be empty/"none" (use the system CA store, fine for most cloud databases), the PEM
+ * text itself (with real or "\n" line breaks, handy on hosts where you cannot upload files), or a
+ * path to a .pem file.
+ */
+function loadCa(value) {
+  const v = String(value ?? '').trim();
+  if (!v || v.toLowerCase() === 'none') return undefined;
+  if (v.includes('-----BEGIN')) return v.replace(/\\n/g, '\n');
+  try {
+    return fs.readFileSync(v);
+  } catch (err) {
+    // Do not crash at import time; the TLS handshake will then fail with a clear, logged error.
+    console.error(`[db] DB_SSL_CA: cannot read "${v}" (${err.code}). Paste the certificate text instead, or use "none".`);
+    return undefined;
+  }
+}
+
 function sslOptions() {
   if (!config.db.ssl) return undefined;
   return {
-    ca: config.db.sslCa ? fs.readFileSync(config.db.sslCa) : undefined,
+    ca: loadCa(config.db.sslCa),
     rejectUnauthorized: config.db.sslRejectUnauthorized,
     minVersion: 'TLSv1.2',
   };

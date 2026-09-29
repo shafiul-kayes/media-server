@@ -1,5 +1,5 @@
 import express from 'express';
-import { dummyHash, hashPassword, verifyPassword } from '../accounts/password.js';
+import { getDummyHash, hashPassword, verifyPassword } from '../accounts/password.js';
 import { users } from '../accounts/repo.js';
 import { csrfToken, endSession, requireUser, safeNext, startSession } from '../accounts/session.js';
 import { sendVerificationEmail } from '../accounts/tokens.js';
@@ -169,7 +169,7 @@ router.post('/login', loginLimiter, async (req, res) => {
   const user = email ? await users.findByEmail(email) : undefined;
 
   // Always run one scrypt verification so response time does not reveal whether the email exists.
-  const passwordOk = await verifyPassword(user?.password_hash ?? dummyHash, password);
+  const passwordOk = await verifyPassword(user?.password_hash ?? (await getDummyHash()), password);
 
   if (user && user.locked_until && user.locked_until > Date.now()) {
     return loginPage(req, res, 401, { email, error: `অনেকবার ভুল চেষ্টার কারণে অ্যাকাউন্টটি সাময়িকভাবে লক। ${bn(config.accounts.lockMinutes)} মিনিট পর আবার চেষ্টা করুন।` });

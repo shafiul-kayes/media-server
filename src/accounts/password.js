@@ -29,8 +29,12 @@ export async function verifyPassword(stored, password) {
   return crypto.timingSafeEqual(actual, expected);
 }
 
+let dummy;
+
 /**
  * A real hash of a random password, verified against when the email does not exist so that
  * "unknown email" and "wrong password" take the same time (no user enumeration via timing).
+ * Created lazily: a top-level await here would stop hosts that load the app with require()
+ * (Hostinger/LiteSpeed) from starting it.
  */
-export const dummyHash = await hashPassword(crypto.randomBytes(16).toString('hex'));
+export const getDummyHash = () => (dummy ??= hashPassword(crypto.randomBytes(16).toString('hex')));
