@@ -6,7 +6,7 @@ import { sendVerificationEmail } from '../accounts/tokens.js';
 import { normalizeEmail, validateRegistration } from '../accounts/validate.js';
 import { config } from '../config.js';
 import { loginLimiter, logAudit, registerLimiter } from './common.js';
-import { bn, csrfField, field, flash, html, publicPage, sendHtml } from './html.js';
+import { authPage, bn, csrfField, field, flash, html, publicPage, sendHtml } from './html.js';
 
 export const router = express.Router();
 
@@ -71,7 +71,7 @@ router.get('/', (req, res) => {
 
 function registerPage(req, res, status, { values = {}, errors = {}, closed = false } = {}) {
   const token = csrfToken(req, res);
-  sendHtml(res, status, publicPage(req, {
+  sendHtml(res, status, authPage(req, {
     title: 'রেজিস্ট্রেশন',
     body: html`<section class="auth-card card">
   <h1>অ্যাকাউন্ট খুলুন</h1>
@@ -136,7 +136,7 @@ router.post('/register', registerLimiter, async (req, res) => {
 function loginPage(req, res, status, { email = '', error = '', notice = '' } = {}) {
   const token = csrfToken(req, res);
   const next = safeNext(req.query.next ?? req.body?.next, '');
-  sendHtml(res, status, publicPage(req, {
+  sendHtml(res, status, authPage(req, {
     title: 'লগইন',
     body: html`<section class="auth-card card">
   <h1>লগইন</h1>

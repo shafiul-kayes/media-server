@@ -9,7 +9,7 @@ import { config } from '../config.js';
 import { sendMailInBackground } from '../mail/mailer.js';
 import * as templates from '../mail/templates.js';
 import { logAudit } from './common.js';
-import { bn, csrfField, errorPage, field, html, publicPage, sendHtml } from './html.js';
+import { authPage, bn, csrfField, errorPage, field, html, sendHtml } from './html.js';
 
 export const router = express.Router();
 
@@ -25,7 +25,7 @@ const forgotLimiter = rateLimit({
   handler: (req, res) => sendHtml(res, 429, errorPage(req, 429, 'অনেকবার চেষ্টা হয়েছে। ১৫ মিনিট পর আবার চেষ্টা করুন।')),
 });
 
-const invalidLink = (req, res, what) => sendHtml(res, 400, publicPage(req, {
+const invalidLink = (req, res, what) => sendHtml(res, 400, authPage(req, {
   title: 'লিংকটি কাজ করছে না',
   body: html`<section class="auth-card card center">
   <h1>লিংকটি কাজ করছে না</h1>
@@ -38,7 +38,7 @@ const invalidLink = (req, res, what) => sendHtml(res, 400, publicPage(req, {
 
 function forgotPage(req, res, status, { sent = false, email = '' } = {}) {
   const token = csrfToken(req, res);
-  sendHtml(res, status, publicPage(req, {
+  sendHtml(res, status, authPage(req, {
     title: 'পাসওয়ার্ড ভুলে গেছেন',
     body: sent
       ? html`<section class="auth-card card center">
@@ -82,7 +82,7 @@ const RESET_PURPOSES = ['reset_password', 'invite'];
 function resetPage(req, res, status, row, { errors = {} } = {}) {
   const csrf = csrfToken(req, res);
   const invite = row.purpose === 'invite';
-  sendHtml(res, status, publicPage(req, {
+  sendHtml(res, status, authPage(req, {
     title: invite ? 'পাসওয়ার্ড সেট করুন' : 'নতুন পাসওয়ার্ড',
     body: html`<section class="auth-card card">
   <h1>${invite ? 'অ্যাকাউন্ট চালু করুন' : 'নতুন পাসওয়ার্ড সেট করুন'}</h1>
@@ -132,7 +132,7 @@ router.get('/verify-email', async (req, res) => {
   const row = await findValidToken(req.query.token, ['verify_email']);
   if (!row) return invalidLink(req, res, 'যাচাই');
   const csrf = csrfToken(req, res);
-  sendHtml(res, 200, publicPage(req, {
+  sendHtml(res, 200, authPage(req, {
     title: 'ইমেইল যাচাই',
     body: html`<section class="auth-card card center">
   <div class="big-icon" aria-hidden="true">✓</div>

@@ -13,7 +13,7 @@ import * as repo from '../repo.js';
 import { hashKey } from '../services/apiKeys.js';
 import { logAudit, toId, toPage } from './common.js';
 import {
-  appPage, badge, bn, csrfField, field, formatBytes, formatDate, html, pagination, scopeChecks, sendHtml, usageBar,
+  appPage, badge, bn, csrfField, field, formatBytes, formatDate, html, pagination, scopeChecks, sendHtml, stat, usageBar,
 } from './html.js';
 
 export const router = express.Router();
@@ -66,10 +66,10 @@ router.get('/', async (req, res) => {
     active: 'admin',
     body: html`<div class="page-head"><h1>অ্যাডমিন ওভারভিউ</h1></div>
 <div class="stats">
-  <a class="stat stat-link ${counts.pending ? 'stat-attn' : ''}" href="/admin/requests?status=pending"><span class="stat-label">অপেক্ষমাণ অনুরোধ</span><span class="stat-value">${bn(counts.pending)}</span></a>
-  <div class="stat"><span class="stat-label">সক্রিয় অ্যাপ</span><span class="stat-value">${bn(counts.approved)}</span></div>
-  <a class="stat stat-link" href="/admin/users"><span class="stat-label">ইউজার</span><span class="stat-value">${bn(stats.users)}</span><span class="stat-sub">এই সপ্তাহে +${bn(stats.newUsers)}</span></a>
-  <div class="stat"><span class="stat-label">ফাইল · স্টোরেজ</span><span class="stat-value">${bn(stats.files)}</span><span class="stat-sub">${formatBytes(stats.bytes)}</span></div>
+  ${stat({ label: 'অপেক্ষমাণ অনুরোধ', count: counts.pending, iconName: 'inbox', href: '/admin/requests?status=pending', tone: counts.pending ? 'stat-attn' : '' })}
+  ${stat({ label: 'সক্রিয় অ্যাপ', count: counts.approved, iconName: 'key', href: '/admin/requests?status=approved', tone: 'tone-ok' })}
+  ${stat({ label: 'ইউজার', count: stats.users, iconName: 'users', href: '/admin/users', sub: `এই সপ্তাহে +${bn(stats.newUsers)}` })}
+  ${stat({ label: 'ফাইল', count: stats.files, iconName: 'database', sub: formatBytes(stats.bytes) })}
 </div>
 <div class="card"><div class="card-head"><h2>রিভিউয়ের অপেক্ষায়</h2><a href="/admin/requests?status=pending">সব দেখুন</a></div>
   ${pending.rows.length ? requestsTable(pending.rows) : html`<p class="muted">কোনো অপেক্ষমাণ অনুরোধ নেই। 🎉</p>`}</div>

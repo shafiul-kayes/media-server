@@ -15,7 +15,7 @@ import { isValidId, removeStoredBytes } from '../services/storage.js';
 import { logAudit, toId, toPage } from './common.js';
 import { codeBlock, integrationGuide } from './guide.js';
 import {
-  appPage, badge, bn, csrfField, field, formatBytes, formatDate, html, pagination, raw, scopeChecks, sendHtml, usageBar,
+  appPage, badge, bn, csrfField, field, formatBytes, formatDate, html, pagination, raw, scopeChecks, sendHtml, stat, usageBar,
 } from './html.js';
 
 export const router = express.Router();
@@ -77,10 +77,10 @@ router.get('/', async (req, res) => {
   <a class="btn btn-primary" href="/account/apps/new">+ নতুন API অনুরোধ</a></div>
 
 <div class="stats">
-  <div class="stat"><span class="stat-label">মোট অ্যাপ</span><span class="stat-value">${bn(list.length)}</span></div>
-  <div class="stat"><span class="stat-label">অনুমোদিত</span><span class="stat-value">${bn(approved.length)}</span></div>
-  <div class="stat"><span class="stat-label">মোট ফাইল</span><span class="stat-value">${bn(totals.files)}</span></div>
-  <div class="stat"><span class="stat-label">স্টোরেজ</span><span class="stat-value">${formatBytes(totals.bytes)}</span></div>
+  ${stat({ label: 'মোট অ্যাপ', count: list.length, iconName: 'apps', href: '/account/apps' })}
+  ${stat({ label: 'অনুমোদিত', count: approved.length, iconName: 'check', tone: approved.length ? 'tone-ok' : '' })}
+  ${stat({ label: 'মোট ফাইল', count: totals.files, iconName: 'image' })}
+  ${stat({ label: 'স্টোরেজ', value: formatBytes(totals.bytes), iconName: 'database' })}
 </div>
 
 ${done < onboarding.length ? html`<div class="card">

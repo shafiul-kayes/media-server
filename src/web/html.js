@@ -214,6 +214,7 @@ function documentShell({ title, body, bodyClass = '' }) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title} · ${config.appName}</title>
 <link rel="stylesheet" href="/assets/app.css">
+<link rel="stylesheet" href="/assets/motion.css">
 <script src="/assets/app.js" defer></script>
 </head>
 <body class="${bodyClass}">
@@ -222,7 +223,55 @@ ${body}
 </html>`;
 }
 
-const brand = html`<a class="brand" href="/"><span class="brand-mark" aria-hidden="true">◧</span> ${config.appName}</a>`;
+// ---- Icons (inline SVG with attributes only, so they work under the strict CSP) -------------------
+
+const ICONS = {
+  home: 'M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z',
+  apps: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
+  plus: 'M12 5v14M5 12h14',
+  book: 'M4 5a2 2 0 0 1 2-2h14v15H6a2 2 0 0 0-2 2zM4 20V5M8 7h8',
+  sliders: 'M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1M15 4v4M9 10v4M17 16v4',
+  external: 'M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5',
+  chart: 'M4 20V11M10 20V5M16 20v-8M21 20H3',
+  inbox: 'M3 13l3-8h12l3 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 13h5l1.5 3h5L16 13h5',
+  users: 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 6.5M21.5 20a6.5 6.5 0 0 0-4-6',
+  key: 'M8 21a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM11.5 12.5L20 4M16.5 7.5l2.5 2.5M14.5 9.5l2 2',
+  list: 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
+  file: 'M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M9 13h6M9 17h4',
+  database: 'M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
+  check: 'M5 12.5l4.5 4.5L19 7',
+  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3.5 2',
+  shield: 'M12 3l8 3v6c0 5-3.4 8.2-8 9-4.6-.8-8-4-8-9V6z',
+  lock: 'M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
+  logout: 'M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3M10 8l-4 4 4 4M6 12h10',
+  image: 'M4 5h16v14H4zM4 16l5-5 4 4 2-2 5 5M15.5 9.5h.01',
+  scan: 'M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16',
+};
+
+export const icon = (name, cls = 'icon') => raw(
+  `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="${ICONS[name]}"/></svg>`,
+);
+
+const logoMark = raw(`<svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+  <path class="brand-shield" d="M16 2.5l11 4v8.3c0 7-4.8 11.6-11 13.2C9.8 26.4 5 21.8 5 14.8V6.5z"/>
+  <path class="brand-frame" d="M10.5 11.5h11v9h-11z"/><path class="brand-hill" d="M10.5 18.5l3.2-3.2 2.6 2.6 1.6-1.6 3.6 3.6"/>
+</svg>`);
+
+/**
+ * A dashboard statistic. Numeric values carry data-count so app.js can count up to them;
+ * without JavaScript the final value is simply shown.
+ */
+export function stat({ label, value, count, sub, iconName, href, tone = '' }) {
+  const inner = html`<span class="stat-icon">${icon(iconName)}</span>
+    <span class="stat-label">${label}</span>
+    <span class="stat-value" ${count !== undefined ? html`data-count="${count}"` : ''}>${count !== undefined ? bn(count) : value}</span>
+    ${sub ? html`<span class="stat-sub">${sub}</span>` : ''}`;
+  return href
+    ? html`<a class="stat stat-link ${tone}" href="${href}">${inner}</a>`
+    : html`<div class="stat ${tone}">${inner}</div>`;
+}
+
+const brand = html`<a class="brand" href="/">${logoMark}<span>${config.appName}</span></a>`;
 
 export function logoutForm(csrf) {
   return html`<form method="post" action="/logout" class="inline">${csrfField(csrf)}<button type="submit" class="btn btn-ghost btn-sm">লগআউট</button></form>`;
@@ -242,31 +291,95 @@ export function publicPage(req, { title, body }) {
   });
 }
 
+/**
+ * Animated "secure media vault": a shield with pulse rings, orbiting particles and media tiles
+ * being scanned and marked verified/private. Pure HTML + CSS animation (no script, no inline
+ * styles), hidden from assistive technology, and frozen for prefers-reduced-motion.
+ */
+const vaultScene = raw(`<div class="vault" aria-hidden="true">
+  <div class="vault-grid"></div>
+  <div class="vault-glow"></div>
+  <div class="orbit orbit-a"><i></i><i></i><i></i></div>
+  <div class="orbit orbit-b"><i></i><i></i></div>
+  <div class="core">
+    <span class="ring"></span><span class="ring"></span><span class="ring"></span>
+    <svg class="core-shield" viewBox="0 0 64 64">
+      <path class="shield-fill" d="M32 5l21 7.5v15.8c0 13.3-9.1 22.1-21 25.2-11.9-3.1-21-11.9-21-25.2V12.5z"/>
+      <path class="shield-line" d="M32 5l21 7.5v15.8c0 13.3-9.1 22.1-21 25.2-11.9-3.1-21-11.9-21-25.2V12.5z"/>
+      <rect class="lock-body" x="23" y="29" width="18" height="14" rx="3"/>
+      <path class="lock-shackle" d="M26.5 29v-4a5.5 5.5 0 0 1 11 0v4"/>
+      <circle class="lock-hole" cx="32" cy="36" r="2"/>
+    </svg>
+  </div>
+  <div class="tile tile-a">
+    <div class="tile-art art-sunset"><svg viewBox="0 0 80 50"><circle cx="58" cy="15" r="7"/><path d="M0 50 L22 24 L36 38 L48 28 L80 50Z"/></svg><span class="scanline"></span></div>
+    <div class="tile-meta"><span class="ext">JPG</span><span class="chip chip-ok">✓ যাচাইকৃত</span></div>
+  </div>
+  <div class="tile tile-b">
+    <div class="tile-art art-doc"><span></span><span></span><span></span><span></span><b>PDF</b></div>
+    <div class="tile-meta"><span class="ext">PDF</span><span class="chip chip-lock">প্রাইভেট</span></div>
+  </div>
+  <div class="tile tile-c">
+    <div class="tile-art art-ocean"><svg viewBox="0 0 80 50"><path d="M0 34 Q10 28 20 34 T40 34 T60 34 T80 34 V50 H0Z"/><path d="M0 42 Q10 36 20 42 T40 42 T60 42 T80 42 V50 H0Z"/></svg></div>
+    <div class="tile-meta"><span class="ext">WEBP</span><span class="chip chip-cdn">⤢ ৩২০px</span></div>
+  </div>
+  <div class="tile tile-d"><span class="ext">AVIF</span></div>
+  <div class="spark s1"></div><div class="spark s2"></div><div class="spark s3"></div>
+</div>`);
+
+/** Split layout for login, registration and account-recovery pages. */
+export function authPage(req, { title, body }) {
+  return documentShell({
+    title,
+    bodyClass: 'auth',
+    body: html`<div class="auth-layout">
+  <section class="auth-visual">
+    ${vaultScene}
+    <div class="vault-copy">
+      <p class="eyebrow">সুরক্ষিত মিডিয়া লাইব্রেরি</p>
+      <h2>আপনার ইমেজ ও PDF, নিরাপদ ভল্টে</h2>
+      <ul class="trust">
+        <li>${icon('scan')}<span>প্রতিটি আপলোড যাচাই ও পরিষ্কার করা হয়</span></li>
+        <li>${icon('lock')}<span>প্রাইভেট ফাইল খোলে শুধু মেয়াদি signed লিংকে</span></li>
+        <li>${icon('shield')}<span>API key, quota আর অডিট লগে পূর্ণ নিয়ন্ত্রণ</span></li>
+      </ul>
+    </div>
+  </section>
+  <main class="auth-main">
+    <header class="auth-top">${brand}<a href="/docs" class="muted-link">API ডক ${icon('external', 'icon icon-sm')}</a></header>
+    <div class="auth-body">${body}</div>
+    <footer class="auth-foot">© ${bn(new Date().getFullYear())} ${config.appName} · সুরক্ষিত সংযোগ ${icon('lock', 'icon icon-sm')}</footer>
+  </main>
+</div>`,
+  });
+}
+
 const USER_NAV = [
-  ['/account', 'ড্যাশবোর্ড', 'overview'],
-  ['/account/apps', 'আমার অ্যাপ ও API', 'apps'],
-  ['/account/apps/new', 'নতুন API অনুরোধ', 'new'],
-  ['/account/docs', 'ইন্টিগ্রেশন গাইড', 'docs'],
-  ['/account/settings', 'অ্যাকাউন্ট সেটিংস', 'settings'],
+  ['/account', 'ড্যাশবোর্ড', 'overview', 'home'],
+  ['/account/apps', 'আমার অ্যাপ ও API', 'apps', 'apps'],
+  ['/account/apps/new', 'নতুন API অনুরোধ', 'new', 'plus'],
+  ['/account/docs', 'ইন্টিগ্রেশন গাইড', 'docs', 'book'],
+  ['/account/settings', 'অ্যাকাউন্ট সেটিংস', 'settings', 'sliders'],
 ];
 
 const ADMIN_NAV = [
-  ['/admin', 'ওভারভিউ', 'admin'],
-  ['/admin/requests', 'API অনুরোধ', 'requests'],
-  ['/admin/users', 'ইউজার', 'users'],
-  ['/admin/keys', 'সব API key', 'keys'],
-  ['/admin/audit', 'অডিট লগ', 'audit'],
+  ['/admin', 'ওভারভিউ', 'admin', 'chart'],
+  ['/admin/requests', 'API অনুরোধ', 'requests', 'inbox'],
+  ['/admin/users', 'ইউজার', 'users', 'users'],
+  ['/admin/keys', 'সব API key', 'keys', 'key'],
+  ['/admin/audit', 'অডিট লগ', 'audit', 'list'],
 ];
 
 /** Logged-in dashboard with sidebar navigation. */
 export function appPage(req, { title, active, body, flashCode, pendingCount = 0 }) {
   const csrf = req.session.csrf_token;
-  const navLink = ([href, label, key], badgeCount) => html`<a href="${href}" class="${active === key ? 'active' : ''}" ${active === key ? raw('aria-current="page"') : ''}>
-      <span>${label}</span>${badgeCount ? html`<span class="count">${bn(badgeCount)}</span>` : ''}</a>`;
+  const navLink = ([href, label, key, iconName], badgeCount) => html`<a href="${href}" class="${active === key ? 'active' : ''}" ${active === key ? raw('aria-current="page"') : ''}>
+      ${icon(iconName)}<span class="nav-label">${label}</span>${badgeCount ? html`<span class="count">${bn(badgeCount)}</span>` : ''}</a>`;
   return documentShell({
     title,
     bodyClass: 'app',
-    body: html`<header class="topbar"><div class="topbar-inner">
+    body: html`<div class="nav-progress" aria-hidden="true"></div>
+<header class="topbar"><div class="topbar-inner">
   ${brand}
   <div class="topnav">
     <span class="whoami">${req.user.name}${req.user.role === 'admin' ? html` <span class="badge badge-info">অ্যাডমিন</span>` : ''}</span>
@@ -275,7 +388,7 @@ export function appPage(req, { title, active, body, flashCode, pendingCount = 0 
 </div></header>
 <div class="shell">
   <nav class="sidebar" aria-label="মেনু">
-    <div class="nav-group"><div class="nav-title">আমার অ্যাকাউন্ট</div>${USER_NAV.map((l) => navLink(l))}<a href="/docs">API রেফারেন্স ↗</a></div>
+    <div class="nav-group"><div class="nav-title">আমার অ্যাকাউন্ট</div>${USER_NAV.map((l) => navLink(l))}<a href="/docs">${icon('external')}<span class="nav-label">API রেফারেন্স</span></a></div>
     ${req.user.role === 'admin' ? html`<div class="nav-group"><div class="nav-title">অ্যাডমিন প্যানেল</div>${ADMIN_NAV.map((l) => navLink(l, l[2] === 'requests' ? pendingCount : 0))}</div>` : ''}
   </nav>
   <main class="content" id="main">
